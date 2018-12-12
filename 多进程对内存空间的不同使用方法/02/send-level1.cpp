@@ -27,19 +27,30 @@ struct ShareMem {
     char text[MAXSIZE];
 };
 
-static void sig_ready_handle(int signal)
-{
+int shm_size;
 
+static void sig_ready_handle(int signal, siginfo_t* siginfo, void* context)
+{
+    if (signal == SIG_READY) {
+        shm_size = siginfo->si_int;
+    }
+    else {
+        shm_size = 0;
+    }
 }
 
 int main()
 {
     pid_t prior_pid, next_pid;
-    
-    signal(SIG_READY, sig_ready_handle);
+    shm_size = 0;
+    struct sigaction act;
+    act.sa_sigaction = sig_ready_handle;    // 使用带附加参数的信号处理函数
+    sigemptyset(&act.sa_mask);
+    act.sa_flags = SA_SIGINFO;
+    sigaction(SIG_READY, &act, NULL);
+    // signal(SIG_READY, sig_ready_handle);
 
-    while(true)
-    {
+    while(true) {
         prior_pid = getPidByName("send-level2");
         if (prior_pid == 0)
             sleep(1);
@@ -52,7 +63,9 @@ int main()
     int shmid;
 
     // pause here
-    pause();
+    while (shm_size == 0) {
+        pause();
+    }
 
     shmid = shmget(IPC_ID, sizeof(struct ShareMem), 0666);
     if(shmid == -1) {
