@@ -88,6 +88,8 @@ int main()
 
     // 读共享内存，处理数据
     new_size = shm_size;
+
+    
     // 分离共享内存
     if(shmdt(shmp) == -1) {
 		perror("shmdt error");
