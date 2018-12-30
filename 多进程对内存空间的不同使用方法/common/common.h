@@ -1,5 +1,5 @@
 #include <iostream>
-#include <sys/type.h>
+#include <sys/types.h>
 #include <signal.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -7,6 +7,8 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <sys/sem.h>
+#include <sys/file.h>
+#include <sys/stat.h>
 
 #define SIG_READY (SIGRTMIN + 1)
 
