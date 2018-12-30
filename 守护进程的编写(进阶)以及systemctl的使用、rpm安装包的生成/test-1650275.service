@@ -1,0 +1,14 @@
+[Unit]
+#服务描述
+Description=test-160275
+
+[Service]
+#定义Service的运行类型，一般是forking(后台运行)   
+Type=forking
+ExecStart=/usr/sbin/test-1650275
+ExecReload=killall test-1650275 && /usr/sbin/test-1650275
+ExecStop=killall test-1650275
+PrivateTmp=True
+
+[Install]
+WantedBy=multi-user.target
