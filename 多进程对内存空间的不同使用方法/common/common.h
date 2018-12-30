@@ -10,6 +10,6 @@
 #include <sys/file.h>
 #include <sys/stat.h>
 
-#define SIG_READY (SIGRTMIN + 1)
+#define SIGREADY (SIGRTMIN + 1)
 
 pid_t getPidByName(const char * const);

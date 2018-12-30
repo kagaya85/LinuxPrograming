@@ -1,13 +1,11 @@
 #include "../common/common.h"
 
-#define SIGREADY (SIGRTMIN + 1)
-
 using namespace std;
 
 int main()
 {
     int wfd;
-    char* wfilename = "4to5.txt";
+    char* wfilename = "5to4.txt";
 
     signal(SIGREADY, signal_handle);
 
@@ -20,11 +18,16 @@ int main()
     }
 
     int ret, bufsize = 1000;
-    
-    char* buf[bufsize];
-    while(true) {
-        ret = write(wfd, buf, bufsize);
-        
+
+    char* buf[bufsize] = "test";
+
+    ret = write(wfd, buf, strlen(buf));
+    if (ret < strlen(buf)) {
+        cerr << "send-level5 write error" << endl;
+    }
+    else{
+        int pid = getPidByName("d-level4");
+        kill(pid, SIGREADY);
     }
 
     cout << "send-level5 complete" << endl;

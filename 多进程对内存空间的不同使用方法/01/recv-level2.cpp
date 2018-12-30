@@ -1,7 +1,5 @@
 #include "../common/common.h"
 
-#define SIGREADY (SIGRTMIN + 1)
-
 using namespace std;
 
 int main()

@@ -1,14 +1,12 @@
 #include "../common/common.h"
 
-#define SIGREADY (SIGRTMIN + 1)
-
 using namespace std;
 
 int main()
 {
     int rfd, wfd;
-    char* rfilename = "3to4.txt";
-    char* wfilename = "4to5.txt";
+    char* rfilename = "5to4.txt";
+    char* wfilename = "4to3.txt";
 
     signal(SIGREADY, signal_handle);
 
@@ -28,13 +26,17 @@ int main()
 
     int ret, bufsize = 1000;
     char* buf[bufsize];
-    while(true) {
-        ret = read(rfd, buf, bufsize);
-        if (ret > 0)
-            write(wfd, buf, ret);
-        else
-            break;
+
+    ret = read(rfd, buf, bufsize);
+    if (ret > 0) {
+        cout << "send-level4 has read " << ret << " byte(s) from level5" << endl;
+        /* do someting */
+         
     }
+    else {
+        cout << "send-level4 read error" << endl;
+    }
+
 
     cout << "send-level4 complete" << endl;
 }

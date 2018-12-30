@@ -1,14 +1,12 @@
 #include "../common/common.h"
 
-#define SIGREADY (SIGRTMIN + 1)
-
 using namespace std;
 
 int main()
 {
     int rfd, wfd;
-    char* rfilename = "2to3.txt";
-    char* wfilename = "3to4.txt";
+    char* rfilename = "4to3.txt";
+    char* wfilename = "3to2.txt";
 
     signal(SIGREADY, signal_handle);
 
