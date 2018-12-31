@@ -19,6 +19,16 @@ pid_t getPidByName(const char *const task_name) {
     return pid;
 }
 
+void generateData(unsigned char *data, int len) {
+    srand((unsigned int)time(0));
+
+    if (data == NULL) return;
+
+    for (int i = 0; i < len; i++) {
+        data[i] = rand() % 256;
+    }
+}
+
 unsigned short ip_chksum(unsigned short checksum, char *ptr, int len) {
     unsigned long long cksum;
     int idx;
@@ -179,13 +189,11 @@ IPHead getIpHead() {
 
     unsigned char proto = 6;
     unsigned short cksum = 0;
-    unsigned int srcip =
-        (inet_addr(readConf(LEVEL_NETWORK, "srcip").c_str()));
-    unsigned int desip =
-        (inet_addr(readConf(LEVEL_NETWORK, "dstip").c_str()));
+    unsigned int srcip = (inet_addr(readConf(LEVEL_NETWORK, "srcip").c_str()));
+    unsigned int desip = (inet_addr(readConf(LEVEL_NETWORK, "dstip").c_str()));
 
     cksum = htons(~ip_chksum(cksum, *buf_temp, 20));
-    
+
     memcpy(&head, &temp_ver_tos, 2);
     memcpy(&head + 2, &iplen, 2);
     memcpy(&head + 4, &identification, 2);
