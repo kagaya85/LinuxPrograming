@@ -2,12 +2,17 @@
 
 using namespace std;
 
+void signal_handle(int signal) {
+    cout << "send-level-1 "
+         << "get ready signal" << endl;
+}
+
 int main() {
-    int rfd, wfd;
+    int rfd;
     char* wfilename = "network.dat";
     char* rfilename = "2to1.dat";
     int ret, bufsize = 2048;
-    char* buf[bufsize];
+    unsigned char buf[bufsize];
 
     signal(SIGREADY, signal_handle);
 
@@ -15,25 +20,18 @@ int main() {
 
     rfd = open(rfilename, O_RDONLY);
     if (rfd < 0) {
-        cerr << "open " << filename << " error" << endl;
-        exit(EXIT_FAILURE);
-    }
-
-    wfd = open(wfilename, O_WRONLY);
-    if (wfd < 0) {
-        cerr << "open " << filename << " error" << endl;
+        cerr << "open " << rfilename << " error" << endl;
         exit(EXIT_FAILURE);
     }
 
     flock(rfd, LOCK_SH);
-    flock(wfd, LOCK_EX);
-    while (true) {
-        ret = read(rfd, buf, bufsize);
-        if (ret > 0)
-            write(wfd, buf, ret);
-        else
-            break;
-    }
+
+    ret = read(rfd, buf, bufsize);
+    cout << "get " << ret << " byte(s)" << endl;
+    close(rfd);
+    remove(rfilename);
+
+    formatToFile(buf, ret, wfilename);
 
     int pid;
     while ((pid = getPidByName("recv-level-1")) == 0) {
@@ -43,10 +41,6 @@ int main() {
     kill(pid, SIGREADY);
 
     cout << "send-level-1 complete" << endl;
+    cout << "--------------------------------" << endl;
     return 0;
-}
-
-void signal_handle(int signal) {
-    cout << "send-level-1 "
-         << "get ready signal" << endl;
 }

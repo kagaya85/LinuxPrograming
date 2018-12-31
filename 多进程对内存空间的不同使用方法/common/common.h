@@ -11,16 +11,27 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <iostream>
+#include <fstream>
+#include <string>
+#include <cstring>
+#include <arpa/inet.h>
+#include <iomanip>
+
+// #define DEBUG
 
 #define SIGREADY (SIGRTMIN + 1)
-#define LAYER_PHY "[ç‰©ç†å±‚]"
-#define LAYER_NET "[ç½‘ç»œå±‚]"
-#define LAYER_DAT "[æ•°æ®é“¾è·¯å±‚]"
-#define LAYER_TRS "[ä¼ è¾“å±‚]"
-#define LAYER_APP "[åº”ç”¨å±‚]"
+#define LAYER_PHY "[ÎïÀí²ã]"
+#define LAYER_NET "[ÍøÂç²ã]"
+#define LAYER_DAT "[Êı¾İÁ´Â·²ã]"
+#define LAYER_TRS "[´«Êä²ã]"
+#define LAYER_APP "[Ó¦ÓÃ²ã]"
 #define MAC_HEAD_LEN 14
 #define TCP_HEAD_MIN_LEN 20
 #define IP_HEAD_LEN 20
+#define IP_ADDR_LEN 4
+#define CONFIG "network.conf"
+
+using namespace std;
 
 struct TCPHead {
     unsigned short srcport;
@@ -54,16 +65,16 @@ struct MACHead {
 
 void generateData(unsigned char *data, int len);
 pid_t getPidByName(const char *const);
-unsigned short tcp_checksum(unsigned short checksum, char *tcphead, int tcplen,
-                            unsigned int *srcip, unsigned int *destip);
+unsigned short tcp_checksum(char *tcphead, int tcplen, unsigned int *srcip,
+                            unsigned int *destip);
 unsigned short ip_chksum(unsigned short checksum, char *ptr, int len);
 
 string readConf(string layer, string type);
 unsigned char hex_to_char(char temp);
 MACHead getMacHead();
-IPHead getIpHead();
-TCPHead getTcpHead();
-
+IPHead getIpHead(int length);
+unsigned char* getTcpHead(unsigned char* data, int datalen);
+int readFromFile(const char* filename, unsigned char *buf);
 void formatToFile(const unsigned char *data, int len, const char *filename);
 int tcpOffset(TCPHead tcphead);
 void analyzeTcphead(TCPHead tcphead, const unsigned char *buf);

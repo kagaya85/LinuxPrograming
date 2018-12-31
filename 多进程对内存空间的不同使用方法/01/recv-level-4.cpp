@@ -2,12 +2,17 @@
 
 using namespace std;
 
+void signal_handle(int signal) {
+    cout << "recv-level-4 "
+         << "get ready signal" << endl;
+}
+
 int main() {
     int rfd, wfd;
     char* rfilename = "3to4.dat";
     char* wfilename = "4to5.dat";
     int len, bufsize = 2000;
-    char *buf[bufsize], indexp;
+    unsigned char buf[bufsize], indexp;
     TCPHead tcpHead;
 
     signal(SIGREADY, signal_handle);
@@ -16,7 +21,7 @@ int main() {
 
     rfd = open(rfilename, O_RDONLY);
     if (rfd < 0) {
-        cerr << "open " << filename << " error" << endl;
+        cerr << "open " << rfilename << " error" << endl;
         exit(EXIT_FAILURE);
     }
     flock(rfd, LOCK_SH);
@@ -25,15 +30,15 @@ int main() {
     remove(rfilename);
 
     memcpy(&tcpHead, buf, TCP_HEAD_MIN_LEN);
-    int offset = tcpOffset(tcphead);
-    indexp = offset * 4;  // æŒ‡å‘æ•°æ®éƒ¨åˆ†
+    int offset = tcpOffset(tcpHead);
+    indexp = offset * 4;  // Ö¸ÏòÊý¾Ý²¿·Ö
 
-    cout << "recv-level-4 tcp headï¼š" << endl;
-    analyzeTcphead(tcphead, buf);
+    cout << "recv-level-4 tcp head:" << endl;
+    analyzeTcphead(tcpHead, buf);
 
-    wfd = open(wfilename, O_WRONLY);
+    wfd = open(wfilename, O_WRONLY | O_CREAT);
     if (wfd < 0) {
-        cerr << "open " << filename << " error" << endl;
+        cerr << "open " << wfilename << " error" << endl;
         exit(EXIT_FAILURE);
     }
 
@@ -41,6 +46,7 @@ int main() {
     write(wfd, &buf[indexp], len - indexp);
     close(wfd);
 
+    int pid;
     while ((pid = getPidByName("recv-level-5")) == 0) {
         sleep(1);
     }
@@ -48,10 +54,6 @@ int main() {
     kill(pid, SIGREADY);
 
     cout << "recv-level-4 complete" << endl;
+    cout << "--------------------------------" << endl;
     return 0;
-}
-
-void signal_handle(int signal) {
-    cout << "recv-level-4 "
-         << "get ready signal" << endl;
 }

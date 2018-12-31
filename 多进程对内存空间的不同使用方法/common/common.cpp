@@ -1,5 +1,7 @@
 #include "common.h"
 
+using namespace std;
+
 pid_t getPidByName(const char *const task_name) {
     int pid = 0;
     char shell[100] = "ps -e | grep \'";
@@ -56,8 +58,8 @@ unsigned short ip_chksum(unsigned short checksum, char *ptr, int len) {
     return cksum;
 }
 
-unsigned short tcp_checksum(unsigned short checksum, char *tcphead, int tcplen,
-                            unsigned int *srcaddr, unsigned int *destaddr) {
+unsigned short tcp_checksum(char *tcphead, int tcplen, unsigned int *srcaddr,
+                            unsigned int *destaddr) {
     char pseudoheader[12];
     unsigned int calccksum;
     memcpy(&pseudoheader[0], srcaddr, IP_ADDR_LEN);
@@ -88,7 +90,7 @@ unsigned char hex_to_char(char temp) {
 
 string readConf(string layer, string type) {
     ifstream fin;
-    fin.open(config, ios::in);
+    fin.open(CONFIG, ios::in);
     if (!fin.is_open()) exit(-1);
     string result;
     string temp;
@@ -130,8 +132,8 @@ string readConf(string layer, string type) {
 
 MACHead getMacHead() {
     MACHead head;
-    string dstmac = readConf(LEVEL_DATALINK, "dstmac");
-    string srcmac = readConf(LEVEL_DATALINK, "srcmac");
+    string dstmac = readConf(LAYER_DAT, "dstmac");
+    string srcmac = readConf(LAYER_DAT, "srcmac");
     short type = htons(0x0800);
     unsigned char src[6];
     unsigned char dst[6];
@@ -145,24 +147,24 @@ MACHead getMacHead() {
         unsigned char l = hex_to_char(dstmac[j + 1]);
         dst[i] = (h << 4) | l;
     }
-    head.src = src;
-    head.dst = dst;
-    head.type = type;
+    memcpy(&head.src, &src, sizeof(src));
+    memcpy(&head.dst, &dst, sizeof(dst));
+    memcpy(&head.type, &type, sizeof(type));
 
     return head;
 }
 
-IPHead getIpHead() {
+IPHead getIpHead(int length) {
     IPHead head;
     srand((unsigned int)time(0));
 
     unsigned short verlen = 0x45;
     unsigned short tos = 0x00;
     unsigned short temp_ver_tos = htons(verlen << 8 | tos);
-    unsigned short iplen = htons(length + 20);
+    unsigned short iplen = htons(length + IP_HEAD_LEN);
     unsigned short identification = htons(rand());
 
-    string flag = readConf(LEVEL_NETWORK, "flag");
+    string flag = readConf(LAYER_NET, "flag");
     unsigned short flag_temp = 1;
     int len = flag.length();
     for (int i = 0; i < len; i++)
@@ -172,7 +174,7 @@ IPHead getIpHead() {
             flag_temp = (flag_temp << 1);
 
     unsigned short offset;
-    string result = readConf(LEVEL_NETWORK, "offset");
+    string result = readConf(LAYER_NET, "offset");
     if (result.length() <= 0)
         offset = rand() % 8192;
     else
@@ -181,7 +183,7 @@ IPHead getIpHead() {
     flag_temp = htons((flag_temp << 13) | offset);
 
     unsigned char ttl;
-    result = readConf(LEVEL_NETWORK, "ttl");
+    result = readConf(LAYER_NET, "ttl");
     if (result.length() <= 0)
         ttl = rand() % 256;
     else
@@ -189,38 +191,37 @@ IPHead getIpHead() {
 
     unsigned char proto = 6;
     unsigned short cksum = 0;
-    unsigned int srcip = (inet_addr(readConf(LEVEL_NETWORK, "srcip").c_str()));
-    unsigned int desip = (inet_addr(readConf(LEVEL_NETWORK, "dstip").c_str()));
+    unsigned int srcip = (inet_addr(readConf(LAYER_NET, "srcip").c_str()));
+    unsigned int desip = (inet_addr(readConf(LAYER_NET, "dstip").c_str()));
 
-    cksum = htons(~ip_chksum(cksum, *buf_temp, 20));
+    cksum = htons(~ip_chksum(cksum, (char*)&head, 20));
 
-    memcpy(&head, &temp_ver_tos, 2);
-    memcpy(&head + 2, &iplen, 2);
-    memcpy(&head + 4, &identification, 2);
-    memcpy(&head + 6, &flag_temp, 2);
-    memcpy(&head + 8, &ttl, 1);
-    memcpy(&head + 9, &proto, 1);
-    memcpy(&head + 10, &cksum, 2);
-    memcpy(&head + 12, &srcip, 4);
-    memcpy(&head + 16, &desip, 4);
-    memcpy(&head + 10, &cksum, 2);
+    memcpy((char *)&head, &temp_ver_tos, 2);
+    memcpy((char *)&head + 2, &iplen, 2);
+    memcpy((char *)&head + 4, &identification, 2);
+    memcpy((char *)&head + 6, &flag_temp, 2);
+    memcpy((char *)&head + 8, &ttl, 1);
+    memcpy((char *)&head + 9, &proto, 1);
+    memcpy((char *)&head + 10, &cksum, 2);
+    memcpy((char *)&head + 12, &srcip, 4);
+    memcpy((char *)&head + 16, &desip, 4);
+    memcpy((char *)&head + 10, &cksum, 2);
 
     return head;
 }
 
-TCPHead getTcpHead() {
-    TCPHead tcphead;
+unsigned char* getTcpHead(unsigned char* data, int datalen) {
     string result;
     srand((unsigned int)time(0));
     unsigned short target;
-    result = get_from_file(LEVEL_TRANS, "srcport");
+    result = readConf(LAYER_TRS, "srcport");
     if (result.length() <= 0)
         target = rand() % 65545 + 1;
     else
         target = htons(atoi(result.c_str()));
 
     unsigned short source;
-    result = get_from_file(LEVEL_TRANS, "dstport");
+    result = readConf(LAYER_TRS, "dstport");
     if (result.length() <= 0)
         source = rand() % 65545 + 1;
     else
@@ -229,9 +230,9 @@ TCPHead getTcpHead() {
     unsigned seq = htonl(rand());
     unsigned ack = htonl(rand());
 
-    unsigned short offset = atoi(get_from_file(LEVEL_TRANS, "offset").c_str());
+    unsigned short offset = atoi(readConf(LAYER_TRS, "offset").c_str());
     unsigned short reserved = 0;
-    string flag = get_from_file(LEVEL_TRANS, "flag");
+    string flag = readConf(LAYER_TRS, "flag");
     unsigned short flag_temp = 0;
     int len = flag.length();
     for (int i = 0; i < len; i++)
@@ -253,37 +254,49 @@ TCPHead getTcpHead() {
     unsigned short cksum = 0;
     unsigned urg;
     urg = flag[0] == '0' ? 0 : rand();
-
-    memcpy(&tcphead + offset * 4, buf, length);  // copy buf
-
-    memcpy(&tcphead, &target, 2);
-    memcpy(&tcphead + 2, &source, 2);
-    memcpy(&tcphead + 4, &seq, 4);
-    memcpy(&tcphead + 8, &ack, 4);
-
-    memcpy(&tcphead + 12, &head, 2);
-
-    memcpy(&tcphead + 14, &window, 2);
-    memcpy(&tcphead + 16, &cksum, 2);
-    memcpy(&tcphead + 18, &urg, 2);
-
-    // for (int i = 20; i < offset * 4; i++) &head[i] = rand() % 256;
+    
+    char* buf = new(nothrow) char[offset * 4 + datalen];
+    memcpy(buf + offset * 4, data, datalen);  // copy data
+    memcpy(buf, &target, 2);
+    memcpy(buf + 2, &source, 2);
+    memcpy(buf + 4, &seq, 4);
+    memcpy(buf + 8, &ack, 4);
+    memcpy(buf + 12, &head, 2);
+    memcpy(buf + 14, &window, 2);
+    memcpy(buf + 16, &cksum, 2);
+    memcpy(buf + 18, &urg, 2);
+    for (int i = TCP_HEAD_MIN_LEN; i < offset * 4; i++) buf[i] = rand() % 256;
 
     unsigned int srcip =
-        (inet_addr(get_from_file(LEVEL_NETWORK, "srcip").c_str()));
+        (inet_addr(readConf(LAYER_NET, "srcip").c_str()));
     unsigned int desip =
-        (inet_addr(get_from_file(LEVEL_NETWORK, "dstip").c_str()));
+        (inet_addr(readConf(LAYER_NET, "dstip").c_str()));
 
     cksum = htons(
-        tcp_checksum(cksum, *buf_temp, length + offset * 4, &srcip, &desip));
-    memcpy(&tcphead + 16, &cksum, 2);
+        tcp_checksum(buf, datalen + offset * 4, &srcip, &desip));
+    memcpy(buf + 16, &cksum, 2);
 
-    return tcphead;
+    return (unsigned char *)buf;
+}
+
+int readFromFile(const char* filename, unsigned char *buf) {
+    ifstream fin;
+    fin.open(filename, ios::in);
+    if (!fin.is_open()) return -1;
+    int len = 0;
+    while (!fin.eof()) {
+        short temp;
+        fin >> hex >> temp;
+        unsigned char temp_char = temp;
+        memcpy(buf + len, &temp_char, 1);
+        len++;
+    }
+    return len;
 }
 
 void formatToFile(const unsigned char *data, int len, const char *filename) {
     // 结果文件存在则删除
-    if (access(filename) == 0) {
+    if (access(filename, F_OK) == 0) {
         remove(filename);
     }
 
@@ -304,7 +317,7 @@ void formatToFile(const unsigned char *data, int len, const char *filename) {
 
 int tcpOffset(TCPHead tcphead) {
     unsigned short head = 0;
-    memcpy(&head, &tcphead + 12, 2);
+    memcpy(&head, (char*)&tcphead + 12, 2);
     unsigned char offset = 0;
     head = ntohs(head);
     offset = head >> 12;
@@ -312,51 +325,51 @@ int tcpOffset(TCPHead tcphead) {
 }
 
 void analyzeIphead(IPHead iphead) {
-    cout << "版本+首位长度:" << hex << (unsigned short)(iphead.verlen) << dec
+    cout << "version and len: " << hex << (unsigned short)(iphead.verlen) << dec
          << '(' << (unsigned short)(iphead.verlen) << ")" << endl;
-    cout << "服务类型:" << hex << (unsigned short)(iphead.tos) << dec << '('
+    cout << "tos: " << hex << (unsigned short)(iphead.tos) << dec << '('
          << (unsigned short)(iphead.tos) << ")" << endl;
-    cout << "总长度:" << hex << ntohs(iphead.iplen) << dec << '('
+    cout << "length: " << hex << ntohs(iphead.iplen) << dec << '('
          << ntohs(iphead.iplen) << ")" << endl;
-    cout << "标识:" << hex << ntohs(iphead.identification) << dec << '('
+    cout << "identification: " << hex << ntohs(iphead.identification) << dec << '('
          << ntohs(iphead.identification) << ")" << endl;
-    cout << "Flag:" << hex << ntohs(iphead.flag) << dec << '('
+    cout << "Flag: " << hex << ntohs(iphead.flag) << dec << '('
          << ntohs(iphead.flag) << ")" << endl;
-    cout << "生存时间:" << hex << (unsigned short)(iphead.ttl) << dec << '('
+    cout << "ttl: " << hex << (unsigned short)(iphead.ttl) << dec << '('
          << (unsigned short)(iphead.ttl) << ")" << endl;
-    cout << "协议:" << hex << (unsigned short)(iphead.proto) << dec << '('
+    cout << "protocol: " << hex << (unsigned short)(iphead.proto) << dec << '('
          << (unsigned short)(iphead.proto) << ")" << endl;
-    cout << "校验和" << hex << ntohs(iphead.cksum) << dec << '('
+    cout << "sheck sum: " << hex << ntohs(iphead.cksum) << dec << '('
          << ntohs(iphead.cksum) << ")" << endl;
-    cout << "源ip:";
+    cout << "source ip: ";
     struct in_addr inAddr;
     inAddr.s_addr = iphead.srcip;
     cout << hex << ntohl(iphead.srcip) << " - " << inet_ntoa(inAddr) << endl;
-    cout << "目的ip:";
+    cout << "dest ip: ";
     inAddr.s_addr = iphead.dstip;
     cout << hex << ntohl(iphead.dstip) << " - " << inet_ntoa(inAddr) << endl;
 }
 
 void analyzeTcphead(TCPHead tcphead, const unsigned char *buf) {
-    cout << "源端口号  :" << hex << ntohs(tcphead.srcport) << dec << '('
+    cout << "source port: " << hex << ntohs(tcphead.srcport) << dec << '('
          << ntohs(tcphead.srcport) << ")" << endl;
-    cout << "目标端口号:" << hex << ntohs(tcphead.dstport) << dec << '('
+    cout << "dest port: " << hex << ntohs(tcphead.dstport) << dec << '('
          << ntohs(tcphead.dstport) << ")" << endl;
-    cout << "序号:" << hex << ntohl(tcphead.seq) << dec << '('
+    cout << "seq: " << hex << ntohl(tcphead.seq) << dec << '('
          << ntohl(tcphead.seq) << ")" << endl;
-    cout << "确认序号:" << hex << ntohl(tcphead.ack) << dec << '('
+    cout << "ack: " << hex << ntohl(tcphead.ack) << dec << '('
          << ntohl(tcphead.ack) << ")" << endl;
-    cout << "tcp长度:" << hex << Tcp_offset(tcphead) << dec << '('
-         << Tcp_offset(tcphead) << ")" << endl;
-    cout << "code:" << hex << (ntohs(tcphead.head) & (0x003F)) << dec << '('
+    cout << "offset: " << hex << tcpOffset(tcphead) << dec << '('
+         << tcpOffset(tcphead) << ")" << endl;
+    cout << "code: " << hex << (ntohs(tcphead.head) & (0x003F)) << dec << '('
          << (ntohs(tcphead.head) & (0x003F)) << ")" << endl;
-    cout << "窗口大小:" << hex << ntohs(tcphead.windowsize) << dec << '('
+    cout << "winsow size: " << hex << ntohs(tcphead.windowsize) << dec << '('
          << ntohs(tcphead.windowsize) << ")" << endl;
-    cout << "校验和:" << hex << ntohs(tcphead.chsum) << dec << '('
+    cout << "check sum: " << hex << ntohs(tcphead.chsum) << dec << '('
          << ntohs(tcphead.chsum) << ")" << endl;
-    cout << "紧急指针:" << hex << ntohs(tcphead.urg) << dec << '('
+    cout << "urg: " << hex << ntohs(tcphead.urg) << dec << '('
          << ntohs(tcphead.urg) << ")" << endl;
-    cout << "选项：" << endl;
+    cout << "extern：" << endl;
     int offset = tcpOffset(tcphead) * 4 - 20;
     for (int i = 1; i <= offset; i++) {
         cout.fill('0');
@@ -367,7 +380,7 @@ void analyzeTcphead(TCPHead tcphead, const unsigned char *buf) {
 }
 
 void analyzeMachead(MACHead machead) {
-    cout << "源MAC地址：";
+    cout << "source MAC：";
 
     for (int i = 0; i < 6; i++) {
         cout << hex << (unsigned short)machead.src[i];
@@ -375,13 +388,13 @@ void analyzeMachead(MACHead machead) {
     }
     cout << endl;
 
-    cout << "目标MAC地址：";
+    cout << "dest MAC：";
     for (int i = 0; i < 6; i++) {
         cout << hex << (unsigned short)machead.dst[i];
         if (i != 5) cout << ":";
     }
     cout << endl;
-    cout << "类型:" << hex << ntohs(machead.type) << '(' << ntohs(machead.type)
+    cout << "type:" << hex << ntohs(machead.type) << '(' << ntohs(machead.type)
          << ")" << endl;
 }
 
@@ -394,7 +407,7 @@ void analyzeData(unsigned char *buf, int length) {
 }
 
 void analyzeIpCksum(IPHead iphead) {
-    unsigned short result = htons(ip_chksum(iphead.cksum, (char *)buf, 20));
+    unsigned short result = htons(ip_chksum(iphead.cksum, (char*)&iphead, IP_HEAD_LEN));
     cout << result << endl;
     if (result == ntohs(iphead.cksum))
         cout << "校验正确" << endl;
@@ -406,18 +419,17 @@ void analyzeTcpCksum(IPHead iphead, TCPHead tcphead) {
     int offset = tcpOffset(tcphead);
 
     unsigned short cksum;
-    memcpy(&cksum, buf + IP_LEN + 16, 2);
+    cksum = tcphead.chsum;
 
     unsigned short zero = 0;
-    memcpy(buf + IP_LEN + 16, &zero, 2);
+    tcphead.chsum = zero;
 
-    unsigned short result = tcp_checksum(tcphead.chsum, (char *)(buf + IP_LEN),
-                                         ntohs(iphead.iplen) - IP_LEN,
+    unsigned short result = tcp_checksum((char*)&tcphead,
+                                         ntohs(iphead.iplen) - IP_HEAD_LEN,
                                          &iphead.srcip, &iphead.dstip);
-    cout << result << endl;
+    cout << "result: " << result << endl;
 
-    memcpy(buf + IP_LEN + 16, &cksum, 2);
-    if (result == ntohs(head.chsum))
+    if (result == ntohs(tcphead.chsum))
         cout << "校验正确" << endl;
     else
         cout << "校验错误" << endl;

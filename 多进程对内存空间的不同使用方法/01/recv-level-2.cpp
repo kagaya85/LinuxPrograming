@@ -2,12 +2,17 @@
 
 using namespace std;
 
+void signal_handle(int signal) {
+    cout << "recv-level-2 "
+         << "get ready signal" << endl;
+}
+
 int main() {
     int rfd, wfd;
     char* rfilename = "1to2.dat";
     char* wfilename = "2to3.dat";
     int len, bufsize = 2048;
-    char* buf[bufsize];
+    unsigned char buf[bufsize];
     MACHead macHead;
 
     signal(SIGREADY, signal_handle);
@@ -16,26 +21,26 @@ int main() {
 
     rfd = open(rfilename, O_RDONLY);
     if (rfd < 0) {
-        cerr << "open " << filename << " error" << endl;
+        cerr << "open " << rfilename << " error" << endl;
         exit(EXIT_FAILURE);
     }
-    flcok(rfd, LOCK_SH);
+    flock(rfd, LOCK_SH);
     len = read(rfd, buf, bufsize);
     if(len <= 0){
         cerr << "recv-level2 read error" << endl;
         exit(EXIT_FAILURE);
     }
-    close(fd);
+    close(rfd);
     remove(rfilename);
 
-    memcoy(&macHead, buf, MAC_HEAD_LEN);
+    memcpy(&macHead, buf, MAC_HEAD_LEN);
 
     cout << "recv-level-2 mac head:" << endl;
     analyzeMachead(macHead);
 
-    wfd = open(wfilename, O_WRONLY);
+    wfd = open(wfilename, O_WRONLY | O_CREAT);
     if (wfd < 0) {
-        cerr << "open " << filename << " error" << endl;
+        cerr << "open " << wfilename << " error" << endl;
         exit(EXIT_FAILURE);
     }
 
@@ -51,10 +56,6 @@ int main() {
     kill(pid, SIGREADY);
 
     cout << "recv-level-2 complete" << endl;
+    cout << "--------------------------------" << endl;
     return 0;
-}
-
-void signal_handle(int signal) {
-    cout << "recv-level-2 "
-         << "get ready signal" << endl;
 }

@@ -4,13 +4,18 @@ using namespace std;
 
 const char* namestr = "send-level-2";
 
+void signal_handle(int signal)
+{
+    cout << namestr << " get ready signal" << endl;
+}
+
 int main()
 {
     int rfd, wfd;
-    char* rfilename = "3to2.txt";
-    char* wfilename = "2to1.txt";
+    char* rfilename = "3to2.dat";
+    char* wfilename = "2to1.dat";
     int len, bufsize = 2048;
-    char* buf[bufsize];
+    unsigned char buf[bufsize];
     MACHead macHead;
 
     signal(SIGREADY, signal_handle);
@@ -22,7 +27,7 @@ int main()
 
     rfd = open(rfilename, O_RDONLY);
     if(rfd < 0){
-        cerr << "open " << filename << " error" << endl;
+        cerr << "open " << rfilename << " error" << endl;
         exit(EXIT_FAILURE);
     }
     flock(rfd, LOCK_SH);
@@ -31,20 +36,25 @@ int main()
         cerr << namestr << " read error" << endl;
         exit(EXIT_FAILURE);
     }
+    cout << "get " << len << " byte(s)" << endl;
     close(rfd);
     remove(rfilename);
 
     cout << namestr << " mac head:" << endl;
     analyzeMachead(macHead);
 
-    wfd = open(wfilename, O_WRONLY);
+    wfd = open(wfilename, O_WRONLY | O_CREAT);
     if(wfd < 0){
-        cerr << "open " << filename << " error" << endl;
+        cerr << "open " << wfilename << " error" << endl;
         exit(EXIT_FAILURE);
     }
     flock(wfd, LOCK_EX);
     write(wfd, buf, MAC_HEAD_LEN + len);
     close(wfd);
+
+#ifdef DEBUG
+    formatToFile(buf, MAC_HEAD_LEN + len,"test2.dat");
+#endif
 
     int pid;
     while ((pid = getPidByName("send-level-1")) == 0) {
@@ -54,10 +64,6 @@ int main()
     kill(pid, SIGREADY);
 
     cout << namestr << " complete" << endl;
+    cout << "--------------------------------" << endl;
     return 0;
-}
-
-void signal_handle(int signal)
-{
-    cout << namestr << " get ready signal" << endl;
 }

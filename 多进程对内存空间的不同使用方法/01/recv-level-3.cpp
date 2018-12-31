@@ -2,12 +2,17 @@
 
 using namespace std;
 
+void signal_handle(int signal) {
+    cout << "recv-level-3 "
+         << "get ready signal" << endl;
+}
+
 int main() {
     int rfd, wfd;
     char* rfilename = "2to3.dat";
     char* wfilename = "3to4.dat";
     int len, bufsize = 2000;
-    char* buf[bufsize];
+    unsigned char buf[bufsize];
     IPHead iphead;
     TCPHead tcphead;
 
@@ -17,7 +22,7 @@ int main() {
 
     rfd = open(rfilename, O_RDONLY);
     if (rfd < 0) {
-        cerr << "open " << filename << " error" << endl;
+        cerr << "open " << rfilename << " error" << endl;
         exit(EXIT_FAILURE);
     }
     
@@ -42,9 +47,9 @@ int main() {
     cout << "recv-level-3 tcp cksum check: ";
     analyzeTcpCksum(iphead, tcphead);
 
-    wfd = open(wfilename, O_WRONLY);
+    wfd = open(wfilename, O_WRONLY | O_CREAT);
     if (wfd < 0) {
-        cerr << "open " << filename << " error" << endl;
+        cerr << "open " << wfilename << " error" << endl;
         exit(EXIT_FAILURE);
     }
 
@@ -60,10 +65,6 @@ int main() {
     kill(pid, SIGREADY);
 
     cout << "recv-level-3 complete" << endl;
+    cout << "--------------------------------" << endl;
     return 0;
-}
-
-void signal_handle(int signal) {
-    cout << "recv-level-3 "
-         << "get ready signal" << endl;
 }
