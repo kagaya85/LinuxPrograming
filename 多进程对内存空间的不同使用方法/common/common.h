@@ -20,9 +20,9 @@
 #define LAYER_DAT   "[数据链路层]"
 #define LAYER_TRS   "[传输层]"
 #define LAYER_APP   "[应用层]"
-#define MAC_LEN 14
-#define TCP_MIN_LEN 20
-#define IP_LEN 20
+#define MAC_HEAD_LEN 14
+#define TCP_HEAD_MIN_LEN 20
+#define IP_HEAD_LEN 20
 
 struct TCPHead
 {
