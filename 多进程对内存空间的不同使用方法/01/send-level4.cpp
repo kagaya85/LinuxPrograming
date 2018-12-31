@@ -19,6 +19,7 @@ int main()
 
     tcpHead = getTcpHead();    
     unsigned short offset = tcpOffset(tcpHead);
+    memcpy(buf, &tcpHead, TCP_HEAD_MIN_LEN);
 
     rfd = open(rfilename, O_RDONLY);
     if(rfd < 0){
@@ -34,7 +35,7 @@ int main()
     close(rfd);
     remove(rfilename);
 
-    cout << "send-level-4 tcp head:" << endl;
+    cout << namestr <<" tcp head:" << endl;
     analyzeTcphead(tcpHead, &buf[TCP_HEAD_MIN_LEN]);
 
     wfd = open(wfilename, O_WRONLY);
