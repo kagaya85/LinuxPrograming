@@ -1,52 +1,82 @@
 #include "common.h"
 
-pid_t getPidByName(const char * const task_name)
-{
-    const int BUF_SIZE = 1024;
+pid_t getPidByName(const char* const task_name) {
+    int pid = 0;
+    char shell[100] = "ps -e | grep \'";
 
-    DIR *dir;
-    pid_t pid;
-    struct dirent *ptr;
-    FILE *fp;
-    char filepath[50];
-    char cur_task_name[50];
-    char buf[BUF_SIZE];
+    strcat(shell, task_name);
+    strcat(shell, "\' | awk \'{print $1}\'");
 
-    dir = opendir("/proc");
-    if (NULL != dir)
-    {
-        while ((ptr = readdir(dir)) != NULL) //循环读取/proc下的每一个文件/文件夹
-        {
-            //如果读取到的是"."或者".."则跳过，读取到的不是文件夹名字也跳过
-            if ((strcmp(ptr->d_name, ".") == 0) || (strcmp(ptr->d_name, "..") == 0))
-                continue;
-            if (DT_DIR != ptr->d_type)
-                continue;
+    FILE* fp = popen(shell, "r");
+    char ret[10] = {0};
 
-            sprintf(filepath, "/proc/%s/status", ptr->d_name);//生成要读取的文件的路径
-            fp = fopen(filepath, "r");
-            if (NULL != fp)
-            {
-                if(fgets(buf, BUF_SIZE-1, fp)== NULL ){
-                    fclose(fp);
-                    continue;
+    while (NULL != fgets(ret, 10, fp)) {
+        pid = atoi(ret);
+        break;
+    }
+    pclose(fp);
+
+    return pid;
+}
+
+unsigned char toHex(unsigned char bit4) {
+    if (bit4 % 16 < 10) {
+        return bit4 % 16 + '0';
+    } else {
+        return bit4 % 16 - 10 + 'a';
+    }
+}
+
+unsigned char* format(const unsigned char* const data, const int len) {
+    char* res = new (nothrow) char[2 * len + 1];
+    for (int i = 0; i < len; i++) {
+        res[2 * i] = toHex(data[i] >> 4);        // 高4bit
+        res[2 * i + 1] = toHex(data[i] & 0xf0);  // 低4bit
+    }
+}
+
+// unsigned char* readFormatString(const unsigned char* const data) {
+
+// }
+
+string readConf(string layer, string type) {
+    ifstream fin;
+    fin.open(config, ios::in);
+    if (!fin.is_open()) exit(-1);
+    string result;
+    string temp;
+    string temp_type;
+    while (fin.good()) {
+        getline(fin, temp);
+        if (temp[0] != '[') continue;
+        if (temp == layer) {
+            while (fin.good()) {
+                getline(fin, temp_type);
+
+                if (temp_type[0] == '[') {
+                    result.clear();
+                    return result;
                 }
-                sscanf(buf, "%*s %s", cur_task_name);
-
-                //如果文件内容满足要求则打印路径的名字（即进程的PID）
-                if (strstr(cur_task_name, task_name))
-                {
-                    // cout << "Datalink: cur_task_name " << cur_task_name << endl;
-                    // cout << "Datalink: task_name " << task_name << endl;
-                    pid = atoi(ptr->d_name);
-                    // sscanf(ptr->d_name, "%d", pid);
-                    return pid;
+                int del_pos = temp_type.find('#');
+                if (del_pos < temp_type.length()) {
+                    temp_type.erase(del_pos, temp_type.length() - del_pos);
                 }
-                fclose(fp);
+                int del_space = temp_type.find(' ');
+                while (del_space < temp_type.length()) {
+                    temp_type.erase(del_space, 1);
+                    del_space = temp_type.find(' ');
+                }
+                int pos = temp_type.find(type);
+                if (pos == 0) {
+                    result.append(temp_type, temp_type.find('=') + 1,
+                                  temp_type.length() - temp_type.find('='));
+                    return result;
+                } else
+                    ;
             }
         }
-        closedir(dir);
     }
-    pid = -1;
-    return pid;
+    fin.close();
+    result.clear();
+    return result;
 }

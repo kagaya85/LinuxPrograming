@@ -13,3 +13,9 @@
 #define SIGREADY (SIGRTMIN + 1)
 
 pid_t getPidByName(const char * const);
+
+unsigned char* format(const unsigned char* const data, const int len);
+
+// unsigned char* readFormatString(const unsigned char* const data);
+
+string readConf(string layer,string type);

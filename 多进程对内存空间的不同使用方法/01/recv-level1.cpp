@@ -6,7 +6,6 @@ int main()
 {
     int rfd, wfd;
     char* rfilename = "exchange.txt";
-    char* wfilename = "1to2.txt";
 
     signal(SIGREADY, signal_handle);
 
