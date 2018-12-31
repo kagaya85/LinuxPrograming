@@ -61,6 +61,10 @@ unsigned short tcp_checksum(unsigned short checksum, char *tcphead,int tcplen,un
 unsigned short ip_chksum(unsigned short checksum,char *ptr,int len);
 
 string readConf(string layer,string type);
+unsigned char hex_to_char(char temp);
+MACHead getMacHead();
+IPHead getIpHead();
+TCPHead getTcpHead();
 
 void formatToFile(const unsigned char* data, int len, const char* filename);
 int tcpOffset(TCPHead tcphead);

@@ -63,6 +63,19 @@ unsigned short tcp_checksum(unsigned short checksum, char *tcphead, int tcplen,
     return calccksum;
 }
 
+unsigned char hex_to_char(char temp) {
+    unsigned char result;
+    if (temp >= '0' && temp <= '9')
+        result = temp - '0';
+    else if (temp >= 'a' && temp <= 'f')
+        result = 10 + temp - 'a';
+    else if (temp >= 'A' && temp <= 'F')
+        result = 10 + temp - 'A';
+    else
+        return 255;
+    return result;
+}
+
 string readConf(string layer, string type) {
     ifstream fin;
     fin.open(config, ios::in);
@@ -103,6 +116,161 @@ string readConf(string layer, string type) {
     fin.close();
     result.clear();
     return result;
+}
+
+MACHead getMacHead() {
+    MACHead head;
+    string dstmac = readConf(LEVEL_DATALINK, "dstmac");
+    string srcmac = readConf(LEVEL_DATALINK, "srcmac");
+    short type = htons(0x0800);
+    unsigned char src[6];
+    unsigned char dst[6];
+    for (int i = 0, j = 0; i < 6; i++, j = j + 3) {
+        unsigned char h = hex_to_char(srcmac[j]);
+        unsigned char l = hex_to_char(srcmac[j + 1]);
+        src[i] = (h << 4) | l;
+    }
+    for (int i = 0, j = 0; i < 6; i++, j = j + 3) {
+        unsigned char h = hex_to_char(dstmac[j]);
+        unsigned char l = hex_to_char(dstmac[j + 1]);
+        dst[i] = (h << 4) | l;
+    }
+    head.src = src;
+    head.dst = dst;
+    head.type = type;
+
+    return head;
+}
+
+IPHead getIpHead() {
+    IPHead head;
+    srand((unsigned int)time(0));
+
+    unsigned short verlen = 0x45;
+    unsigned short tos = 0x00;
+    unsigned short temp_ver_tos = htons(verlen << 8 | tos);
+    unsigned short iplen = htons(length + 20);
+    unsigned short identification = htons(rand());
+
+    string flag = readConf(LEVEL_NETWORK, "flag");
+    unsigned short flag_temp = 1;
+    int len = flag.length();
+    for (int i = 0; i < len; i++)
+        if (flag[i] == '1')
+            flag_temp = (flag_temp << 1) | 1;
+        else
+            flag_temp = (flag_temp << 1);
+
+    unsigned short offset;
+    string result = readConf(LEVEL_NETWORK, "offset");
+    if (result.length() <= 0)
+        offset = rand() % 8192;
+    else
+        offset = atoi(result.c_str());
+
+    flag_temp = htons((flag_temp << 13) | offset);
+
+    unsigned char ttl;
+    result = readConf(LEVEL_NETWORK, "ttl");
+    if (result.length() <= 0)
+        ttl = rand() % 256;
+    else
+        ttl = atoi(result.c_str());
+
+    unsigned char proto = 6;
+    unsigned short cksum = 0;
+    unsigned int srcip =
+        (inet_addr(readConf(LEVEL_NETWORK, "srcip").c_str()));
+    unsigned int desip =
+        (inet_addr(readConf(LEVEL_NETWORK, "dstip").c_str()));
+
+    cksum = htons(~ip_chksum(cksum, *buf_temp, 20));
+    
+    memcpy(&head, &temp_ver_tos, 2);
+    memcpy(&head + 2, &iplen, 2);
+    memcpy(&head + 4, &identification, 2);
+    memcpy(&head + 6, &flag_temp, 2);
+    memcpy(&head + 8, &ttl, 1);
+    memcpy(&head + 9, &proto, 1);
+    memcpy(&head + 10, &cksum, 2);
+    memcpy(&head + 12, &srcip, 4);
+    memcpy(&head + 16, &desip, 4);
+    memcpy(&head + 10, &cksum, 2);
+
+    return head;
+}
+
+TCPHead getTcpHead() {
+    TCPHead tcphead;
+    string result;
+    srand((unsigned int)time(0));
+    unsigned short target;
+    result = get_from_file(LEVEL_TRANS, "srcport");
+    if (result.length() <= 0)
+        target = rand() % 65545 + 1;
+    else
+        target = htons(atoi(result.c_str()));
+
+    unsigned short source;
+    result = get_from_file(LEVEL_TRANS, "dstport");
+    if (result.length() <= 0)
+        source = rand() % 65545 + 1;
+    else
+        source = htons(atoi(result.c_str()));
+
+    unsigned seq = htonl(rand());
+    unsigned ack = htonl(rand());
+
+    unsigned short offset = atoi(get_from_file(LEVEL_TRANS, "offset").c_str());
+    unsigned short reserved = 0;
+    string flag = get_from_file(LEVEL_TRANS, "flag");
+    unsigned short flag_temp = 0;
+    int len = flag.length();
+    for (int i = 0; i < len; i++)
+        if (i != len - 1) {
+            if (flag[i] == '1')
+                flag_temp = (flag_temp | 1) << 1;
+            else
+                flag_temp = (flag_temp << 1);
+        } else {
+            if (flag[i] == '1')
+                flag_temp = (flag_temp | 1);
+            else
+                flag_temp = (flag_temp);
+        }
+
+    unsigned short head = htons((offset << 12) | (reserved << 6) | flag_temp);
+
+    unsigned short window = htons(rand());
+    unsigned short cksum = 0;
+    unsigned urg;
+    urg = flag[0] == '0' ? 0 : rand();
+
+    memcpy(&tcphead + offset * 4, buf, length);  // copy buf
+
+    memcpy(&tcphead, &target, 2);
+    memcpy(&tcphead + 2, &source, 2);
+    memcpy(&tcphead + 4, &seq, 4);
+    memcpy(&tcphead + 8, &ack, 4);
+
+    memcpy(&tcphead + 12, &head, 2);
+
+    memcpy(&tcphead + 14, &window, 2);
+    memcpy(&tcphead + 16, &cksum, 2);
+    memcpy(&tcphead + 18, &urg, 2);
+
+    // for (int i = 20; i < offset * 4; i++) &head[i] = rand() % 256;
+
+    unsigned int srcip =
+        (inet_addr(get_from_file(LEVEL_NETWORK, "srcip").c_str()));
+    unsigned int desip =
+        (inet_addr(get_from_file(LEVEL_NETWORK, "dstip").c_str()));
+
+    cksum = htons(
+        tcp_checksum(cksum, *buf_temp, length + offset * 4, &srcip, &desip));
+    memcpy(&tcphead + 16, &cksum, 2);
+
+    return tcphead;
 }
 
 void formatToFile(const unsigned char *data, int len, const char *filename) {
@@ -161,7 +329,7 @@ void analyzeIphead(IPHead iphead) {
     cout << hex << ntohl(iphead.dstip) << " - " << inet_ntoa(inAddr) << endl;
 }
 
-void analyzeTcphead(TCPHead tcphead, const unsigned char* buf) {
+void analyzeTcphead(TCPHead tcphead, const unsigned char *buf) {
     cout << "源端口号  :" << hex << ntohs(tcphead.srcport) << dec << '('
          << ntohs(tcphead.srcport) << ")" << endl;
     cout << "目标端口号:" << hex << ntohs(tcphead.dstport) << dec << '('
@@ -205,8 +373,8 @@ void analyzeMachead(MACHead machead) {
         if (i != 5) cout << ":";
     }
     cout << endl;
-    cout << "类型:" << hex << ntohs(machead.type) << '('
-         << ntohs(machead.type) << ")" << endl;
+    cout << "类型:" << hex << ntohs(machead.type) << '(' << ntohs(machead.type)
+         << ")" << endl;
 }
 
 void analyzeData(unsigned char *buf, int length) {
