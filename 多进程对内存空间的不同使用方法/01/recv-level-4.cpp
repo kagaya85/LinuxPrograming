@@ -4,8 +4,8 @@ using namespace std;
 
 int main() {
     int rfd, wfd;
-    char* rfilename = "3to4.txt";
-    char* wfilename = "4to5.txt";
+    char* rfilename = "3to4.dat";
+    char* wfilename = "4to5.dat";
     int len, bufsize = 2000;
     char *buf[bufsize], indexp;
     TCPHead tcpHead;
@@ -21,7 +21,7 @@ int main() {
     }
 
     len = read(rfd, buf, bufsize);
-    memcpy(&tcpHead, buf, TCP_MIN_LEN);
+    memcpy(&tcpHead, buf, TCP_HEAD_MIN_LEN);
     int offset = tcpOffset(tcphead);
     indexp = offset * 4;  // 指向数据部分
 

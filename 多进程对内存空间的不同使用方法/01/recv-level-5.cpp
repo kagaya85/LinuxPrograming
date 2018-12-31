@@ -4,7 +4,7 @@ using namespace std;
 
 int main() {
     int rfd;
-    const char* rfilename = "4to5.txt";
+    const char* rfilename = "4to5.dat";
     const char* wfilename = "receiver.dat"
 
     signal(SIGREADY, signal_handle);

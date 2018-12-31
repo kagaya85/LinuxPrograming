@@ -5,7 +5,7 @@ using namespace std;
 int main()
 {
     int rfd, wfd;
-    char* rfilename = "exchange.txt";
+    char* rfilename = "network.dat";
 
     signal(SIGREADY, signal_handle);
 
