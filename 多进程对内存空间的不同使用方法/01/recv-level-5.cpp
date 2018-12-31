@@ -25,6 +25,7 @@ int main() {
         cerr << "read error" << endl;
     }
     close(rfd);
+    remove(rfilename);
 
     formatToFile(buf, len, wfilename);
     

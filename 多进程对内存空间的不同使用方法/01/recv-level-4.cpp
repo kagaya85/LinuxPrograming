@@ -19,8 +19,11 @@ int main() {
         cerr << "open " << filename << " error" << endl;
         exit(EXIT_FAILURE);
     }
-
+    flock(rfd, LOCK_SH);
     len = read(rfd, buf, bufsize);
+    close(rfd);
+    remove(rfilename);
+
     memcpy(&tcpHead, buf, TCP_HEAD_MIN_LEN);
     int offset = tcpOffset(tcphead);
     indexp = offset * 4;  // 指向数据部分

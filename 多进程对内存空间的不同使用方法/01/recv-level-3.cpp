@@ -28,6 +28,7 @@ int main() {
         exit(EXIT_FAILURE);
     }
     close(rfd);
+    remove(rfilename);
 
     memcpy(&iphead, buf, IP_HEAD_LEN);  //  获取ip头
     memcpy(&tcphead, &buf[IP_HEAD_LEN], TCP_HEAD_MIN_LEN);  // 获取下一层的tcp头
