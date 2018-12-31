@@ -2,42 +2,51 @@
 
 using namespace std;
 
-int main()
-{
+int main() {
     int rfd, wfd;
-    char* rfilename = "2to1.txt";
-    char* wfilename = "exchange.txt";
+    char* wfilename = "network.dat";
+    char* rfilename = "2to1.dat";
+    int ret, bufsize = 2048;
+    char* buf[bufsize];
 
     signal(SIGREADY, signal_handle);
 
     pause();
 
     rfd = open(rfilename, O_RDONLY);
-    if(rfd < 0){
+    if (rfd < 0) {
         cerr << "open " << filename << " error" << endl;
         exit(EXIT_FAILURE);
     }
 
     wfd = open(wfilename, O_WRONLY);
-    if(wfd < 0){
+    if (wfd < 0) {
         cerr << "open " << filename << " error" << endl;
         exit(EXIT_FAILURE);
     }
 
-    int ret, bufsize = 1000;
-    char* buf[bufsize];
-    while(true) {
+    flock(rfd, LOCK_SH);
+    flock(wfd, LOCK_EX);
+    while (true) {
         ret = read(rfd, buf, bufsize);
         if (ret > 0)
             write(wfd, buf, ret);
         else
             break;
     }
-    
-    cout << "send-level1 complete" << endl;
+
+    int pid;
+    while ((pid = getPidByName("recv-level-1")) == 0) {
+        sleep(1);
+    }
+
+    kill(pid, SIGREADY);
+
+    cout << "send-level-1 complete" << endl;
+    return 0;
 }
 
-void signal_handle(int signal)
-{
-    cout << "send-level1 " << "get ready signal" << endl;
+void signal_handle(int signal) {
+    cout << "send-level-1 "
+         << "get ready signal" << endl;
 }
