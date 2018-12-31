@@ -42,11 +42,11 @@ int main() {
 
     kill(pid, SIGREADY);
 
-    cout << "recv-level1 complete" << endl;
+    cout << "recv-level-1 complete" << endl;
     return 0;
 }
 
 void signal_handle(int signal) {
-    cout << "recv-level1 "
+    cout << "recv-level-1 "
          << "get ready signal" << endl;
 }
