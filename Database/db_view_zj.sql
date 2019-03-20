@@ -36,14 +36,13 @@ group by bid1;
 /* 建立第3小题的view */
 drop view if exists view_devcount_tmp1;
 create view view_devcount_tmp1 as
-select devorg_branch2_id as branch2_id, count(distinct devstate_base_devid) as devnum
+select devorg_branch2_id as branch2_id, devstate_base_devid as devid
 from devorg inner join devstate_base
-on devorg_id = devstate_base_devid
-group by devorg_id; -- 这里按devorg_id分类有问题
+on devorg_id = devstate_base_devid;
 
 drop view if exists view_devcount_tmp2;
 create view view_devcount_tmp2 as
-select branch2_branch1_id as bid1, sum(devnum) as devcount
+select branch2_branch1_id as bid1, count(distinct devid) as devcount
 from view_devcount_tmp1 inner join branch2
 on view_devcount_tmp1.branch2_id = branch2.branch2_id
 group by bid1;

@@ -68,7 +68,8 @@ group by bid2;
 /* result table */
 drop table if exists table_result;
 create table table_result as
-select branch1_id as bid1, branch1_id as bid2, ifnull(branch2_name, branch1_name) as bid2name, ifnull(devnum, 0), ifnull(devcount, 0), ifnull(devunreg, 0), ifnull(devdup, 0)
+select branch1_id as bid1, branch2_id as bid2, ifnull(branch2_name, branch1_name) as bid2name, ifnull(devnum, 0) as devnum, 
+    ifnull(devcount, 0) as devcount, ifnull(devunreg, 0) as devunreg, ifnull(devdup, 0) as devdup
 from branch1 left join branch2 on branch1_id = branch2_branch1_id 
     left join view_devnum on branch2_id = view_devnum.bid2
     left join view_devcount on branch2_id = view_devcount.bid2
@@ -79,16 +80,17 @@ from branch1 left join branch2 on branch1_id = branch2_branch1_id
 drop procedure if exists proc_get_devorg_b1s;
 
 /* 建立过程 */
+delimiter //
 create procedure proc_get_devorg_b1s(in bid char(4))
 begin
     if bid is null then
-        select * from table_reslut;
+        select * from table_result;
     else
         select * from table_result
         where bid1 = bid;
-    end if
-end
-
+    end if;
+end //
+delimiter ;
 /* 生成与answer一样的输出文件的调用顺序，不要改动 */
 call proc_get_devorg_b1s(NULL);
 call proc_get_devorg_b1s("11");
